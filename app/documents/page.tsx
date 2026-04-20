@@ -28,8 +28,9 @@ export default function DocumentsPage() {
   }, [])
 
   const loadDocuments = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/'); return }
+const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { router.push('/'); return }
+    const user = session.user
     setUserId(user.id)
     setUserEmail(user.email || '')
     // Resolve any pending shares for this user's email
