@@ -49,19 +49,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing file or user' }, { status: 400 })
     }
 
-    const allowedTypes = [
-      'text/plain',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ]
+const fileName = file.name.toLowerCase()
+    const isTxt = fileName.endsWith('.txt') || file.type === 'text/plain'
+    const isDocx = fileName.endsWith('.docx') || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
-    if (!allowedTypes.includes(file.type)) {
+    if (!isTxt && !isDocx) {
       return NextResponse.json({ error: 'Unsupported file type. Use .txt or .docx' }, { status: 400 })
     }
 
     let tiptapContent
 
-    if (file.type === 'text/plain') {
-      const text = await file.text()
+if (isTxt) {
+          const text = await file.text()
       const lines = text.split('\n').filter(l => l.trim().length > 0)
       tiptapContent = {
         type: 'doc',
