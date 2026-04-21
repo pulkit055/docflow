@@ -78,6 +78,17 @@ if (isTxt) {
 
     const title = file.name.replace(/\.(txt|docx)$/i, '') || 'Uploaded Document'
 
+    const { data: existing } = await supabase
+      .from('documents')
+      .select('id')
+      .eq('owner_id', userId)
+      .eq('title', title)
+      .maybeSingle()
+
+    if (existing) {
+      return NextResponse.json({ error: `A document named "${title}" already exists` }, { status: 409 })
+    }
+
     const { data, error } = await supabase
       .from('documents')
       .insert({

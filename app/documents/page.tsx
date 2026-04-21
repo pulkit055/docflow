@@ -20,6 +20,8 @@ export default function DocumentsPage() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [search, setSearch] = useState('')
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
   const router = useRouter()
   const [userEmail, setUserEmail] = useState('')
 
@@ -110,8 +112,18 @@ await supabase
     if (result.id) {
       router.push(`/documents/${result.id}`)
     } else {
-      alert('Upload failed. Please try again.')
+      alert(result.error || 'Upload failed. Please try again.')
     }
+  }
+
+  const renameDocument = async (id: string) => {
+    const newTitle = renameValue.trim()
+    if (!newTitle) { setRenamingId(null); return }
+    const existing = docs.find(d => d.id !== id && d.title === newTitle && !d.isShared)
+    if (existing) { alert(`A document named "${newTitle}" already exists`); return }
+    await supabase.from('documents').update({ title: newTitle }).eq('id', id)
+    setDocs(prev => prev.map(d => d.id === id ? { ...d, title: newTitle } : d))
+    setRenamingId(null)
   }
 
   if (loading) return (
@@ -198,15 +210,33 @@ await supabase
             <p className="text-xs text-gray-400 uppercase tracking-wide mb-4">
               {docs.length} document{docs.length !== 1 ? 's' : ''}
             </p>
-{docs.filter(doc => doc.title.toLowerCase().includes(search.toLowerCase())).map(doc => (              <div
+{docs.filter(doc => doc.title.toLowerCase().includes(search.toLowerCase())).map(doc => (
+              <div
                 key={doc.id}
                 className="bg-white border border-gray-200 rounded-lg px-5 py-4 flex items-center justify-between hover:border-blue-300 hover:shadow-sm transition-all"
               >
-                <div
-                  className="flex-1 cursor-pointer"
-                  onClick={() => router.push(`/documents/${doc.id}`)}
-                >
-                  <p className="text-sm font-medium text-gray-900">{doc.title}</p>
+                <div className="flex-1 min-w-0">
+                  {renamingId === doc.id ? (
+                    <input
+                      autoFocus
+                      value={renameValue}
+                      onChange={e => setRenameValue(e.target.value)}
+                      onBlur={() => renameDocument(doc.id)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') renameDocument(doc.id)
+                        if (e.key === 'Escape') setRenamingId(null)
+                      }}
+                      onClick={e => e.stopPropagation()}
+                      className="text-sm font-medium text-gray-900 border border-blue-400 rounded px-2 py-0.5 outline-none w-full max-w-xs"
+                    />
+                  ) : (
+                    <p
+                      className="text-sm font-medium text-gray-900 cursor-pointer truncate"
+                      onClick={() => router.push(`/documents/${doc.id}`)}
+                    >
+                      {doc.title}
+                    </p>
+                  )}
                   <p className="text-xs text-gray-400 mt-0.5">
                     Updated {new Date(doc.updated_at).toLocaleDateString()}
                     {doc.last_edited_by && (
@@ -223,17 +253,29 @@ await supabase
                     {doc.isShared ? 'Shared with you' : 'Owner'}
                   </span>
                   {!doc.isShared && (
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation()
-                        if (!confirm('Delete this document?')) return
-                        await supabase.from('documents').delete().eq('id', doc.id)
-                        setDocs(prev => prev.filter(d => d.id !== doc.id))
-                      }}
-                      className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition-colors"
-                    >
-                      Delete
-                    </button>
+                    <>
+                      <button
+                        onClick={e => {
+                          e.stopPropagation()
+                          setRenamingId(doc.id)
+                          setRenameValue(doc.title)
+                        }}
+                        className="text-xs text-gray-400 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
+                      >
+                        Rename
+                      </button>
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation()
+                          if (!confirm('Delete this document?')) return
+                          await supabase.from('documents').delete().eq('id', doc.id)
+                          setDocs(prev => prev.filter(d => d.id !== doc.id))
+                        }}
+                        className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </>
                   )}
                 </div>
               </div>

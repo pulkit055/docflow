@@ -22,6 +22,7 @@ export default function EditorPage() {
   const [shareError, setShareError] = useState('')
   const [shareSuccess, setShareSuccess] = useState('')
   const [editorState, setEditorState] = useState(0)
+  const [fetchedContent, setFetchedContent] = useState<object | null>(null)
   const [active, setActive] = useState({
     bold: false,
     italic: false,
@@ -74,6 +75,13 @@ export default function EditorPage() {
     loadDocument()
   }, [docId])
 
+  useEffect(() => {
+    if (editor && fetchedContent) {
+      editor.commands.setContent(fetchedContent)
+      setFetchedContent(null)
+    }
+  }, [editor, fetchedContent])
+
   const loadDocument = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/'); return }
@@ -90,7 +98,7 @@ export default function EditorPage() {
     setIsOwner(data.owner_id === user.id)
 
     if (data.content && Object.keys(data.content).length > 0) {
-      editor?.commands.setContent(data.content)
+      setFetchedContent(data.content)
     }
 
     if (data.owner_id === user.id) {
